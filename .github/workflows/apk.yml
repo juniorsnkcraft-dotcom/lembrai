@@ -1,0 +1,74 @@
+name: Gerar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Montar o app web
+        run: npm run build
+
+      - name: Criar projeto Android
+        run: npx cap add android
+
+      - name: Permissões de notificação e ícone da notificação
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n\n    <application#' "$M"
+          mkdir -p android/app/src/main/res/drawable
+          cp resources/ic_stat_lembrete.xml android/app/src/main/res/drawable/
+          cat "$M"
+
+      - name: Gerar ícones do app
+        continue-on-error: true
+        run: npx -y @capacitor/assets@3 generate --android --iconBackgroundColor '#FF5A1F' --iconBackgroundColorDark '#FF5A1F' --splashBackgroundColor '#FF5A1F' --splashBackgroundColorDark '#FF5A1F'
+
+      - name: Sincronizar
+        run: npx cap sync android
+
+      - name: Compilar APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../LembraAi.apk
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LembraAi
+          path: LembraAi.apk
+
+      - name: Publicar para download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Lembra Aí v1.0.${{ github.run_number }}
+          body: |
+            Baixe o **LembraAi.apk** abaixo e abra no celular Android para instalar.
+            Se o Android avisar sobre "fontes desconhecidas", permita a instalação para o navegador/arquivos.
+          files: LembraAi.apk
+          make_latest: true

@@ -1,0 +1,14 @@
+{
+  "appId": "com.junior.lembraai",
+  "appName": "Lembra Aí",
+  "webDir": "www",
+  "android": {
+    "adjustMarginsForEdgeToEdge": "force"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_lembrete",
+      "iconColor": "#FF5A1F"
+    }
+  }
+}
